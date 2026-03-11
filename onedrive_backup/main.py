@@ -17,7 +17,8 @@ PORT = int(os.environ.get("PORT", 8080))
 DEFAULT_CLIENT_ID = "b8a647cf-eccf-4c7f-a0a6-2cbec5d0b94d"
 CLIENT_ID = os.environ.get("CLIENT_ID") or os.getenv("ADDON_CLIENT_ID") or DEFAULT_CLIENT_ID
 AUTHORITY = "https://login.microsoftonline.com/consumers"
-SCOPES = ["offline_access", "Files.ReadWrite.AppFolder"]
+# Do not include reserved OIDC scopes (openid/profile/offline_access) in MSAL request.
+SCOPES = ["Files.ReadWrite.AppFolder"]
 
 TOKEN_CACHE_PATH = os.environ.get('TOKEN_CACHE_PATH', 'token_cache.bin')
 BACKUP_PATH = os.environ.get('BACKUP_PATH', '/backup')
