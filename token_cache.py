@@ -1,7 +1,14 @@
 import os
 import threading
 from msal import SerializableTokenCache
-from cryptography.fernet import Fernet, InvalidToken
+
+try:
+    from cryptography.fernet import Fernet, InvalidToken
+except Exception:
+    Fernet = None
+
+    class InvalidToken(Exception):
+        pass
 
 
 class TokenCacheStorage:
@@ -9,7 +16,7 @@ class TokenCacheStorage:
         self.path = path
         self._lock = threading.Lock()
         self.key = key or os.environ.get('SECURE_KEY')
-        self._fernet = Fernet(self.key) if self.key else None
+        self._fernet = Fernet(self.key) if (self.key and Fernet) else None
 
     def load(self):
         cache = SerializableTokenCache()
