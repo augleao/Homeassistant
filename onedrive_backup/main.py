@@ -21,7 +21,8 @@ REMOTE_FOLDER = os.environ.get('REMOTE_FOLDER', 'Backups')
 
 
 async def index(request):
-    return web.FileResponse('static/index.html')
+    base = pathlib.Path(__file__).parent
+    return web.FileResponse(base.joinpath('static', 'index.html'))
 
 
 def schedule_jobs(app):
@@ -210,6 +211,9 @@ async def logout(request):
 
 def create_app():
     app = web.Application()
+    # Serve static files under /static from the add-on's static/ directory
+    static_dir = str(pathlib.Path(__file__).parent.joinpath('static'))
+    app.router.add_static('/static', static_dir, show_index=False)
     app.router.add_get('/', index)
     app.router.add_post('/api/auth/device/start', device_login_start)
     app.router.add_get('/api/auth/device/status', device_login_status)
