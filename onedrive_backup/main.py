@@ -13,9 +13,7 @@ import logging
 _LOGGER = logging.getLogger(__name__)
 
 PORT = int(os.environ.get("PORT", 8080))
-# Compatible with OneDrive personal accounts, like the reference add-on.
-DEFAULT_CLIENT_ID = "b8a647cf-eccf-4c7f-a0a6-2cbec5d0b94d"
-CLIENT_ID = os.environ.get("CLIENT_ID") or os.getenv("ADDON_CLIENT_ID") or DEFAULT_CLIENT_ID
+CLIENT_ID = (os.environ.get("CLIENT_ID") or os.getenv("ADDON_CLIENT_ID") or "").strip()
 AUTHORITY = "https://login.microsoftonline.com/consumers"
 # Do not include reserved OIDC scopes (openid/profile/offline_access) in MSAL request.
 SCOPES = ["Files.ReadWrite.AppFolder"]
@@ -58,6 +56,8 @@ def schedule_jobs(app):
 def get_msal_app(app):
     if 'msal_app' in app:
         return app['msal_app']
+    if not CLIENT_ID:
+        raise ValueError('client_id is required. Set it in add-on Configuration before linking your account.')
     cache_storage = TokenCacheStorage(path=TOKEN_CACHE_PATH)
     cache = cache_storage.load()
     msal_app = msal.PublicClientApplication(
