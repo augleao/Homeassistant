@@ -16,7 +16,13 @@ class TokenCacheStorage:
         self.path = path
         self._lock = threading.Lock()
         self.key = key or os.environ.get('SECURE_KEY')
-        self._fernet = Fernet(self.key) if (self.key and Fernet) else None
+        self._fernet = None
+        if self.key and Fernet:
+            try:
+                self._fernet = Fernet(self.key)
+            except Exception:
+                # Invalid key format: keep cache functional without encryption.
+                self._fernet = None
 
     def load(self):
         cache = SerializableTokenCache()

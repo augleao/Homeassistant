@@ -7,6 +7,10 @@ from token_cache import TokenCacheStorage
 import one_drive
 import uuid
 import pathlib
+import logging
+
+
+_LOGGER = logging.getLogger(__name__)
 
 PORT = int(os.environ.get("PORT", 8080))
 # Compatible with OneDrive personal accounts, like the reference add-on.
@@ -23,6 +27,25 @@ REMOTE_FOLDER = os.environ.get('REMOTE_FOLDER', 'Backups')
 async def index(request):
     base = pathlib.Path(__file__).parent
     return web.FileResponse(base.joinpath('static', 'index.html'))
+
+
+@web.middleware
+async def api_error_middleware(request, handler):
+    try:
+        return await handler(request)
+    except web.HTTPException:
+        raise
+    except Exception as ex:
+        _LOGGER.exception("Unhandled API error on %s", request.path)
+        if request.path.startswith('/api/'):
+            return web.json_response(
+                {
+                    'error': 'internal_server_error',
+                    'message': str(ex),
+                },
+                status=500,
+            )
+        raise
 
 
 def schedule_jobs(app):
@@ -58,8 +81,19 @@ def _auth_result_payload(auth_state):
     }
 
 async def device_login_start(request):
-    msal_app = get_msal_app(request.app)
-    flow = msal_app.initiate_device_flow(scopes=SCOPES)
+    try:
+        msal_app = get_msal_app(request.app)
+        flow = msal_app.initiate_device_flow(scopes=SCOPES)
+    except Exception as ex:
+        _LOGGER.exception('Failed to start device flow')
+        return web.json_response(
+            {
+                'error': 'failed_to_start_device_flow',
+                'message': str(ex),
+            },
+            status=500,
+        )
+
     if 'user_code' not in flow:
         return web.json_response({'error': 'failed_to_initiate_device_flow', 'details': flow}, status=500)
 
@@ -210,7 +244,7 @@ async def logout(request):
 
 
 def create_app():
-    app = web.Application()
+    app = web.Application(middlewares=[api_error_middleware])
     # Serve static files under /static from the add-on's static/ directory
     static_dir = str(pathlib.Path(__file__).parent.joinpath('static'))
     app.router.add_static('/static', static_dir, show_index=False)
