@@ -2,27 +2,117 @@
 <html>
   <head>
     <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Onedrive Backup Machine</title>
+    <style>
+      :root {
+        --bg: #f4f6f8;
+        --card: #ffffff;
+        --text: #16202a;
+        --muted: #4b5b6b;
+        --line: #d7dde4;
+        --accent: #ffdd00;
+        --accent-border: #d1b400;
+      }
+
+      body {
+        margin: 0;
+        font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+        background: radial-gradient(circle at top right, #ffffff 0%, var(--bg) 50%, #ecf1f5 100%);
+        color: var(--text);
+      }
+
+      .wrap {
+        max-width: 760px;
+        margin: 0 auto;
+        padding: 18px;
+      }
+
+      .card {
+        background: var(--card);
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        padding: 14px;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.07);
+      }
+
+      .support {
+        margin-bottom: 14px;
+      }
+
+      .support h2 {
+        margin: 0 0 6px;
+        font-size: 16px;
+      }
+
+      .support p {
+        margin: 0 0 12px;
+        color: var(--muted);
+      }
+
+      .cta {
+        display: inline-block;
+        background: var(--accent);
+        color: #111;
+        font-weight: 700;
+        text-decoration: none;
+        padding: 10px 14px;
+        border-radius: 10px;
+        border: 1px solid var(--accent-border);
+        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+        transition: transform 0.15s ease, box-shadow 0.15s ease;
+      }
+
+      .cta:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 5px 12px rgba(0, 0, 0, 0.2);
+      }
+
+      h1 {
+        margin-top: 0;
+      }
+
+      .actions {
+        margin-top: 12px;
+      }
+
+      button {
+        margin-right: 8px;
+        margin-bottom: 8px;
+      }
+
+      #authbox {
+        display: none;
+        margin-top: 12px;
+        padding: 10px;
+        border: 1px solid #ccc;
+        border-radius: 8px;
+        background: #fafcff;
+      }
+    </style>
   </head>
   <body>
-    <h1>Onedrive Backup Machine</h1>
-    <div id="status">Checking...</div>
-    <button id="login">Vincular conta OneDrive</button>
-    <div id="authbox" style="display:none; margin-top: 12px; padding: 10px; border: 1px solid #ccc;">
-      <div><strong>Abra esta URL:</strong> <a id="auth_url" href="#" target="_blank" rel="noopener noreferrer">-</a></div>
-      <div><strong>Informe este codigo:</strong> <code id="auth_code">-</code></div>
-      <div id="auth_message" style="margin-top: 8px;"></div>
-    </div>
-    <button id="backup">Trigger Backup</button>
-    <div style="margin-top: 14px;">
-      <a
-        href="https://buymeacoffee.com/augleao"
-        target="_blank"
-        rel="noopener noreferrer"
-        style="display:inline-block; background:#ffdd00; color:#111; font-weight:700; text-decoration:none; padding:10px 14px; border-radius:10px; border:1px solid #d1b400; box-shadow:0 2px 6px rgba(0,0,0,.15);"
-      >
-        Buy Me a Coffee
-      </a>
+    <div class="wrap">
+      <div class="card support">
+        <h2>Support the project</h2>
+        <p>If this add-on helps you, consider supporting future improvements.</p>
+        <a class="cta" href="https://buymeacoffee.com/augleao" target="_blank" rel="noopener noreferrer">Buy Me a Coffee</a>
+      </div>
+
+      <div class="card">
+        <h1>Onedrive Backup Machine</h1>
+        <div id="status">Checking...</div>
+        <div class="actions">
+          <button id="login">Vincular conta OneDrive</button>
+          <button id="backup">Trigger Backup</button>
+        </div>
+
+        <div id="authbox">
+          <div><strong>Abra esta URL:</strong> <a id="auth_url" href="#" target="_blank" rel="noopener noreferrer">-</a></div>
+          <div><strong>Informe este codigo:</strong> <code id="auth_code">-</code></div>
+          <div id="auth_message" style="margin-top: 8px;"></div>
+        </div>
+      </div>
     </div>
     <script src="/static/app.js"></script>
   </body>
