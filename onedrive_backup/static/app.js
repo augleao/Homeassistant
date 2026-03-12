@@ -36,6 +36,27 @@ function setLoginEnabled(enabled) {
   qs('login').disabled = !enabled;
 }
 
+function openAddonConfiguration() {
+  const candidates = [
+    '/hassio/addon/onedrive_backup_machine/configuration',
+    '/hassio/addon/onedrive_backup_machine/info',
+    '/hassio/dashboard',
+  ];
+
+  try {
+    const topWindow = window.top || window;
+    topWindow.location.href = candidates[0];
+    return;
+  } catch (_e) {
+    // Fall through to a new tab when top-level navigation is restricted.
+  }
+
+  const opened = window.open(candidates[0], '_blank', 'noopener,noreferrer');
+  if (!opened) {
+    alert(`Open manually: ${candidates[0]}`);
+  }
+}
+
 function formatDate(value) {
   if (!value) {
     return '-';
@@ -524,6 +545,7 @@ async function deleteSelectedTask() {
 function bindEvents() {
   qs('login').addEventListener('click', startLogin);
   qs('logout').addEventListener('click', logoutAccount);
+  qs('addon_config_btn').addEventListener('click', openAddonConfiguration);
   qs('save_settings').addEventListener('click', saveSettings);
 
   qs('new_task').addEventListener('click', () => openWizard('create'));
