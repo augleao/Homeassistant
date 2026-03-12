@@ -1,5 +1,6 @@
 const state = {
   tasks: [],
+  jobs: [],
   selectedTaskId: null,
   wizardMode: 'create',
   editingTaskId: null,
@@ -83,6 +84,29 @@ function renderTasks() {
       state.selectedTaskId = task.id;
       renderTasks();
     });
+    tbody.appendChild(tr);
+  });
+}
+
+function renderJobs() {
+  const tbody = qs('jobs_tbody');
+  tbody.innerHTML = '';
+  if (!state.jobs.length) {
+    tbody.innerHTML = '<tr><td colspan="5" class="muted">No jobs yet.</td></tr>';
+    return;
+  }
+
+  state.jobs.forEach((job) => {
+    const tr = document.createElement('tr');
+    const summary = job.summary || {};
+    const summaryText = `Downloaded: ${summary.downloaded || 0}, Skipped: ${summary.skipped || 0}, Errors: ${summary.errors || 0}`;
+    tr.innerHTML = `
+      <td>${job.task_name || job.task_id || '-'}</td>
+      <td><span class="job-status job-${job.status || 'queued'}">${job.status || 'queued'}</span></td>
+      <td>${job.mode || '-'}</td>
+      <td>${formatDate(job.started_at)}</td>
+      <td>${summaryText}</td>
+    `;
     tbody.appendChild(tr);
   });
 }
@@ -320,6 +344,17 @@ async function loadTasks() {
   }
 }
 
+async function loadJobs() {
+  try {
+    const r = await fetch('api/jobs');
+    const j = await readJsonOrThrow(r);
+    state.jobs = j.jobs || [];
+    renderJobs();
+  } catch (e) {
+    console.error('Failed to load jobs', e);
+  }
+}
+
 function renderTree(items) {
   const container = qs('tree_container');
   container.innerHTML = '';
@@ -441,9 +476,10 @@ async function runSelectedTask() {
   }
   try {
     const r = await fetch(`api/tasks/${task.id}/run`, { method: 'POST' });
-    await readJsonOrThrow(r);
-    alert(`Task "${task.name}" started.`);
+    const j = await readJsonOrThrow(r);
+    alert(`Task "${task.name}" started. Job: ${j.job_id}`);
     await loadTasks();
+    await loadJobs();
   } catch (e) {
     alert('Failed to run task: ' + e.message);
   }
@@ -484,6 +520,7 @@ function bindEvents() {
   });
   qs('delete_task').addEventListener('click', deleteSelectedTask);
   qs('run_task').addEventListener('click', runSelectedTask);
+  qs('refresh_jobs').addEventListener('click', loadJobs);
 
   qs('backup_mode').addEventListener('change', updateModeFields);
   qs('schedule_type').addEventListener('change', updateScheduleFields);
@@ -523,7 +560,8 @@ function bindEvents() {
 
 async function init() {
   bindEvents();
-  await Promise.all([loadStatus(), loadSettings(), loadTasks()]);
+  await Promise.all([loadStatus(), loadSettings(), loadTasks(), loadJobs()]);
+  setInterval(loadJobs, 5000);
 }
 
 init();

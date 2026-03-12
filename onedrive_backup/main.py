@@ -573,30 +573,33 @@ async def sync_source(access_token, source, destination_root, mode, summary):
         await sync_file_item(access_token, source, destination_root, rel_path, mode, summary)
 
 
-async def run_task_by_id(app, task_id, trigger='manual'):
+async def run_task_by_id(app, task_id, trigger='manual', existing_job_id=None):
     state = get_state(app)
     task = find_task(state, task_id)
     if not task:
         raise ValueError('Task not found')
 
     jobs = app.setdefault('jobs', {})
-    job_id = str(uuid.uuid4())
-    jobs[job_id] = {
-        'id': job_id,
-        'task_id': task_id,
-        'task_name': task.get('name'),
-        'trigger': trigger,
-        'status': 'running',
-        'started_at': now_utc_iso(),
-        'completed_at': None,
-        'mode': None,
-        'summary': {
-            'downloaded': 0,
-            'skipped': 0,
-            'errors': 0,
-            'error_messages': [],
-        },
-    }
+    job_id = existing_job_id or str(uuid.uuid4())
+    if job_id not in jobs:
+        jobs[job_id] = {
+            'id': job_id,
+            'task_id': task_id,
+            'task_name': task.get('name'),
+            'trigger': trigger,
+            'status': 'running',
+            'started_at': now_utc_iso(),
+            'completed_at': None,
+            'mode': None,
+            'summary': {
+                'downloaded': 0,
+                'skipped': 0,
+                'errors': 0,
+                'error_messages': [],
+            },
+        }
+    else:
+        jobs[job_id]['status'] = 'running'
 
     try:
         token = acquire_token_silent(app)
@@ -674,11 +677,31 @@ async def run_task_now(request):
     if not task:
         return web.json_response({'error': 'not_found'}, status=404)
 
+    jobs = request.app.setdefault('jobs', {})
+    job_id = str(uuid.uuid4())
+    jobs[job_id] = {
+        'id': job_id,
+        'task_id': task_id,
+        'task_name': task.get('name'),
+        'trigger': 'manual',
+        'status': 'queued',
+        'started_at': now_utc_iso(),
+        'completed_at': None,
+        'mode': None,
+        'summary': {
+            'downloaded': 0,
+            'skipped': 0,
+            'errors': 0,
+            'error_messages': [],
+        },
+    }
+
     async def _runner():
-        await run_task_by_id(request.app, task_id, trigger='manual')
+        jobs[job_id]['status'] = 'running'
+        await run_task_by_id(request.app, task_id, trigger='manual', existing_job_id=job_id)
 
     asyncio.create_task(_runner())
-    return web.json_response({'started': True, 'task_id': task_id})
+    return web.json_response({'started': True, 'task_id': task_id, 'job_id': job_id})
 
 
 async def get_job(request):
@@ -689,6 +712,12 @@ async def get_job(request):
     return web.json_response(job)
 
 
+async def list_jobs(request):
+    jobs = list((request.app.get('jobs') or {}).values())
+    jobs.sort(key=lambda j: j.get('started_at') or '', reverse=True)
+    return web.json_response({'jobs': jobs[:100]})
+
+
 async def trigger_backup(request):
     state = get_state(request.app)
     tasks = state.get('tasks') or []
@@ -696,8 +725,32 @@ async def trigger_backup(request):
         return web.json_response({'error': 'no_tasks_configured'}, status=400)
 
     task_id = tasks[0]['id']
-    asyncio.create_task(run_task_by_id(request.app, task_id, trigger='manual'))
-    return web.json_response({'started': True, 'task_id': task_id})
+    task_name = tasks[0].get('name')
+    jobs = request.app.setdefault('jobs', {})
+    job_id = str(uuid.uuid4())
+    jobs[job_id] = {
+        'id': job_id,
+        'task_id': task_id,
+        'task_name': task_name,
+        'trigger': 'manual',
+        'status': 'queued',
+        'started_at': now_utc_iso(),
+        'completed_at': None,
+        'mode': None,
+        'summary': {
+            'downloaded': 0,
+            'skipped': 0,
+            'errors': 0,
+            'error_messages': [],
+        },
+    }
+
+    async def _runner():
+        jobs[job_id]['status'] = 'running'
+        await run_task_by_id(request.app, task_id, trigger='manual', existing_job_id=job_id)
+
+    asyncio.create_task(_runner())
+    return web.json_response({'started': True, 'task_id': task_id, 'job_id': job_id})
 
 
 async def list_backups(request):
@@ -745,6 +798,7 @@ def create_app():
     app.router.add_delete('/api/tasks/{task_id}', delete_task)
     app.router.add_post('/api/tasks/{task_id}/run', run_task_now)
 
+    app.router.add_get('/api/jobs', list_jobs)
     app.router.add_get('/api/jobs/{job_id}', get_job)
     app.router.add_get('/api/onedrive/tree', onedrive_tree)
 

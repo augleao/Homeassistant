@@ -134,6 +134,29 @@
         background: #f0f7ed;
       }
 
+      .job-status {
+        display: inline-block;
+        padding: 3px 8px;
+        border-radius: 999px;
+        font-size: 12px;
+        border: 1px solid var(--line);
+      }
+
+      .job-running,
+      .job-queued {
+        background: #eef5ea;
+      }
+
+      .job-completed {
+        background: #e2f3de;
+      }
+
+      .job-completed_with_errors,
+      .job-error {
+        background: #fff0ec;
+        border-color: #e8b8ae;
+      }
+
       .muted {
         color: var(--muted);
       }
@@ -345,6 +368,27 @@
           </thead>
           <tbody id="tasks_tbody">
             <tr><td colspan="5" class="muted">No tasks created yet.</td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section class="card">
+        <div class="head">
+          <h2>Recent Jobs</h2>
+          <button id="refresh_jobs">Refresh</button>
+        </div>
+        <table>
+          <thead>
+            <tr>
+              <th>Task</th>
+              <th>Status</th>
+              <th>Mode</th>
+              <th>Started</th>
+              <th>Summary</th>
+            </tr>
+          </thead>
+          <tbody id="jobs_tbody">
+            <tr><td colspan="5" class="muted">No jobs yet.</td></tr>
           </tbody>
         </table>
       </section>
