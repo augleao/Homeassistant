@@ -319,10 +319,14 @@ def get_msal_app(app):
 
 
 def _auth_result_payload(auth_state):
+    verification_uri = auth_state.get('verification_uri')
+    if verification_uri and 'login.microsoft.com/device' in verification_uri:
+        verification_uri = 'https://microsoft.com/devicelogin'
+
     return {
         'status': auth_state.get('status', 'idle'),
         'message': auth_state.get('message'),
-        'verification_uri': auth_state.get('verification_uri'),
+        'verification_uri': verification_uri,
         'user_code': auth_state.get('user_code'),
         'expires_in': auth_state.get('expires_in'),
     }
