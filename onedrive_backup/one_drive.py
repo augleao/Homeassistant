@@ -22,8 +22,8 @@ async def list_children(access_token: str, parent_id: str | None = None) -> List
     if parent_id:
         url = f"{GRAPH_BASE}/me/drive/items/{parent_id}/children"
     else:
-        # With Files.ReadWrite.AppFolder scope, approot is the correct root.
-        url = f"{GRAPH_BASE}/me/drive/special/approot/children"
+        # For full-drive backup tasks, start from the actual root folder.
+        url = f"{GRAPH_BASE}/me/drive/root/children"
 
     async with aiohttp.ClientSession() as session:
         async with session.get(url, headers=headers) as resp:

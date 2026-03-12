@@ -21,7 +21,8 @@ TENANT_ID = (os.environ.get("TENANT_ID") or "").strip()
 # If tenant_id is provided, use tenant authority (works for org-only apps).
 # Otherwise default to consumers for personal Microsoft account device flow.
 AUTHORITY = f"https://login.microsoftonline.com/{TENANT_ID}" if TENANT_ID else "https://login.microsoftonline.com/consumers"
-SCOPES = ["Files.ReadWrite.AppFolder"]
+# Request access to user files so task creation can browse full OneDrive tree.
+SCOPES = ["Files.Read"]
 
 TOKEN_CACHE_PATH = os.environ.get('TOKEN_CACHE_PATH', 'token_cache.bin')
 BACKUP_PATH = os.environ.get('BACKUP_PATH', '/backup')
