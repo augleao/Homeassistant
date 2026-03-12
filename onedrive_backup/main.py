@@ -341,6 +341,14 @@ def acquire_token_silent(app):
 
 
 async def device_login_start(request):
+    if not CLIENT_ID:
+        return web.json_response(
+            {
+                'error': 'client_id_missing',
+                'message': 'client_id is required. Set it in add-on Configuration before linking your account.',
+            },
+            status=400,
+        )
     try:
         msal_app = get_msal_app(request.app)
         flow = msal_app.initiate_device_flow(scopes=SCOPES)
@@ -386,10 +394,39 @@ async def device_login_start(request):
 
 
 async def device_login_status(request):
-    _ = get_msal_app(request.app)
+    if not CLIENT_ID:
+        return web.json_response(
+            {
+                'status': 'error',
+                'message': 'client_id is required. Set it in add-on Configuration.',
+                'verification_uri': None,
+                'user_code': None,
+                'expires_in': None,
+            }
+        )
+
+    try:
+        _ = get_msal_app(request.app)
+    except Exception as ex:
+        return web.json_response(
+            {
+                'status': 'error',
+                'message': str(ex),
+                'verification_uri': None,
+                'user_code': None,
+                'expires_in': None,
+            },
+            status=500,
+        )
+
     auth_state = request.app.get('auth_state', {'status': 'idle'})
     if auth_state.get('status') == 'pending':
-        token = acquire_token_silent(request.app)
+        try:
+            token = acquire_token_silent(request.app)
+        except Exception as ex:
+            request.app['auth_state']['status'] = 'error'
+            request.app['auth_state']['message'] = str(ex)
+            return web.json_response(_auth_result_payload(request.app['auth_state']), status=500)
         if token:
             request.app['auth_state']['status'] = 'authenticated'
             request.app['auth_state']['message'] = 'Authentication successful'
@@ -397,7 +434,27 @@ async def device_login_status(request):
 
 
 async def status(request):
-    tokens = acquire_token_silent(request.app)
+    if not CLIENT_ID:
+        return web.json_response(
+            {
+                'authenticated': False,
+                'client_id_configured': False,
+                'message': 'Set client_id in add-on configuration.',
+            }
+        )
+
+    try:
+        tokens = acquire_token_silent(request.app)
+    except Exception as ex:
+        return web.json_response(
+            {
+                'authenticated': False,
+                'client_id_configured': True,
+                'message': str(ex),
+            },
+            status=200,
+        )
+
     return web.json_response(
         {
             'authenticated': bool(tokens),
