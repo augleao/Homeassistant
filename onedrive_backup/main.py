@@ -17,7 +17,10 @@ _LOGGER = logging.getLogger(__name__)
 
 PORT = int(os.environ.get("PORT", 8080))
 CLIENT_ID = (os.environ.get("CLIENT_ID") or os.getenv("ADDON_CLIENT_ID") or "").strip()
-AUTHORITY = "https://login.microsoftonline.com/consumers"
+TENANT_ID = (os.environ.get("TENANT_ID") or "").strip()
+# If tenant_id is provided, use tenant authority (works for org-only apps).
+# Otherwise use common authority for apps that allow both personal and org accounts.
+AUTHORITY = f"https://login.microsoftonline.com/{TENANT_ID}" if TENANT_ID else "https://login.microsoftonline.com/common"
 SCOPES = ["Files.ReadWrite.AppFolder"]
 
 TOKEN_CACHE_PATH = os.environ.get('TOKEN_CACHE_PATH', 'token_cache.bin')
