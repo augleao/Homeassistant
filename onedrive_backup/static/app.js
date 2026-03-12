@@ -33,7 +33,16 @@ function setStatus(text) {
 }
 
 function setLoginEnabled(enabled) {
-  qs('login').disabled = !enabled;
+  const loginBtn = qs('login');
+  if (loginBtn) {
+    loginBtn.disabled = !enabled;
+  }
+}
+
+function setDisplay(element, value) {
+  if (element) {
+    element.style.display = value;
+  }
 }
 
 function setAccountActionVisibility({ authenticated, clientConfigured }) {
@@ -45,23 +54,23 @@ function setAccountActionVisibility({ authenticated, clientConfigured }) {
 
   if (authenticated) {
     // When account is linked, keep only Disconnect visible.
-    loginBtn.style.display = 'none';
-    addonConfigBtn.style.display = 'none';
-    azurePortalBtn.style.display = 'none';
-    azureDocsBtn.style.display = 'none';
-    logoutBtn.style.display = 'inline-block';
+    setDisplay(loginBtn, 'none');
+    setDisplay(addonConfigBtn, 'none');
+    setDisplay(azurePortalBtn, 'none');
+    setDisplay(azureDocsBtn, 'none');
+    setDisplay(logoutBtn, 'inline-block');
     return;
   }
 
   // When account is not linked, hide Disconnect and show setup actions.
-  logoutBtn.style.display = 'none';
-  loginBtn.style.display = 'inline-block';
-  addonConfigBtn.style.display = 'inline-block';
-  azurePortalBtn.style.display = 'inline-block';
-  azureDocsBtn.style.display = 'inline-block';
+  setDisplay(logoutBtn, 'none');
+  setDisplay(loginBtn, 'inline-block');
+  setDisplay(addonConfigBtn, 'inline-block');
+  setDisplay(azurePortalBtn, 'inline-block');
+  setDisplay(azureDocsBtn, 'inline-block');
 
   if (!clientConfigured) {
-    loginBtn.style.display = 'none';
+    setDisplay(loginBtn, 'none');
   }
 }
 
