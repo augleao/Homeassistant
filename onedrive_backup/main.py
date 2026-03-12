@@ -6,6 +6,7 @@ import pathlib
 import logging
 import threading
 from datetime import datetime, timedelta, timezone
+from zoneinfo import ZoneInfo
 from aiohttp import web
 import msal
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
@@ -28,6 +29,18 @@ TOKEN_CACHE_PATH = os.environ.get('TOKEN_CACHE_PATH', 'token_cache.bin')
 BACKUP_PATH = os.environ.get('BACKUP_PATH', '/backup')
 STATE_PATH = os.environ.get('STATE_PATH', '/data/backup_tasks_state.json')
 DEFAULT_RETENTION_DAYS = int(os.environ.get('RETENTION_DAYS_DEFAULT', '30'))
+
+
+def _resolve_app_timezone():
+    tz_name = (os.environ.get('TZ') or 'UTC').strip() or 'UTC'
+    try:
+        return ZoneInfo(tz_name), tz_name
+    except Exception:
+        _LOGGER.warning('Invalid TZ value "%s". Falling back to UTC.', tz_name)
+        return timezone.utc, 'UTC'
+
+
+APP_TZ, APP_TZ_NAME = _resolve_app_timezone()
 
 
 class StateStore:
@@ -65,7 +78,7 @@ class StateStore:
 
 
 def now_local():
-    return datetime.now()
+    return datetime.now(APP_TZ)
 
 
 def now_utc_iso():
@@ -261,9 +274,10 @@ async def api_error_middleware(request, handler):
 
 def schedule_jobs(app):
     # Bind scheduler to the currently running aiohttp loop.
-    scheduler = AsyncIOScheduler(event_loop=asyncio.get_running_loop())
+    scheduler = AsyncIOScheduler(event_loop=asyncio.get_running_loop(), timezone=APP_TZ)
     scheduler.start()
     app['scheduler'] = scheduler
+    _LOGGER.info('Scheduler started with timezone: %s', APP_TZ_NAME)
     sync_task_schedules(app)
 
 
@@ -290,7 +304,6 @@ def sync_task_schedules(app):
             scheduler.remove_job(job.id)
 
     state = get_state(app)
-    now = now_local()
     for task in state['tasks']:
         if not task.get('enabled', True):
             task.setdefault('state', {})['next_run_at'] = None
@@ -310,8 +323,19 @@ def sync_task_schedules(app):
         def _runner(tid=task_id):
             asyncio.create_task(run_task_by_id(app, tid, trigger='scheduled'))
 
-        scheduler.add_job(_runner, trigger='cron', id=f'task_{task_id}', replace_existing=True, **kwargs)
-        task.setdefault('state', {})['next_run_at'] = compute_next_run(task, from_dt=now)
+        scheduler.add_job(
+            _runner,
+            trigger='cron',
+            id=f'task_{task_id}',
+            replace_existing=True,
+            misfire_grace_time=3600,
+            coalesce=True,
+            max_instances=1,
+            **kwargs,
+        )
+        job = scheduler.get_job(f'task_{task_id}')
+        next_run_dt = job.next_run_time if job else None
+        task.setdefault('state', {})['next_run_at'] = next_run_dt.isoformat() if next_run_dt else None
 
     save_state(app)
 
