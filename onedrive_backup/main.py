@@ -19,8 +19,8 @@ PORT = int(os.environ.get("PORT", 8080))
 CLIENT_ID = (os.environ.get("CLIENT_ID") or os.getenv("ADDON_CLIENT_ID") or "").strip()
 TENANT_ID = (os.environ.get("TENANT_ID") or "").strip()
 # If tenant_id is provided, use tenant authority (works for org-only apps).
-# Otherwise use common authority for apps that allow both personal and org accounts.
-AUTHORITY = f"https://login.microsoftonline.com/{TENANT_ID}" if TENANT_ID else "https://login.microsoftonline.com/common"
+# Otherwise default to consumers for personal Microsoft account device flow.
+AUTHORITY = f"https://login.microsoftonline.com/{TENANT_ID}" if TENANT_ID else "https://login.microsoftonline.com/consumers"
 SCOPES = ["Files.ReadWrite.AppFolder"]
 
 TOKEN_CACHE_PATH = os.environ.get('TOKEN_CACHE_PATH', 'token_cache.bin')
@@ -376,7 +376,17 @@ async def device_login_start(request):
         )
 
     if 'user_code' not in flow:
-        return web.json_response({'error': 'failed_to_initiate_device_flow', 'details': flow}, status=500)
+        flow_message = None
+        if isinstance(flow, dict):
+            flow_message = flow.get('error_description') or flow.get('error')
+        return web.json_response(
+            {
+                'error': 'failed_to_initiate_device_flow',
+                'message': flow_message or 'Device flow was not initiated by Microsoft identity platform.',
+                'details': flow,
+            },
+            status=500,
+        )
 
     auth_state = {
         'status': 'pending',
