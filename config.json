@@ -15,16 +15,12 @@
   "map": ["config:rw", "backup:rw"],
   "options": {
     "client_id": "",
-    "client_secret": "",
     "tenant_id": "",
-    "backup_path": "/backup",
-    "secure_key": ""
+    "backup_path": "/backup"
   },
   "schema": {
     "client_id": "str?",
-    "client_secret": "str?",
     "tenant_id": "str?",
-    "backup_path": "str?",
-    "secure_key": "str?"
+    "backup_path": "str?"
   }
 }

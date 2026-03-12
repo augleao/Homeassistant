@@ -1,6 +1,6 @@
 {
   "name": "Onedrive Backup Machine",
-  "version": "0.3.4",
+  "version": "0.3.5",
   "slug": "onedrive_backup_machine",
   "description": "Backup Home Assistant OS to OneDrive with scheduled and on-demand backups.",
   "startup": "services",
@@ -15,16 +15,12 @@
   "map": ["config:rw", "backup:rw"],
   "options": {
     "client_id": "",
-    "client_secret": "",
     "tenant_id": "",
-    "backup_path": "/backup",
-    "secure_key": ""
+    "backup_path": "/backup"
   },
   "schema": {
     "client_id": "str",
-    "client_secret": "str?",
     "tenant_id": "str?",
-    "backup_path": "str?",
-    "secure_key": "str?"
+    "backup_path": "str?"
   }
 }
