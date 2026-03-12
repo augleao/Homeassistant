@@ -17,6 +17,23 @@ async def list_folder(access_token: str, folder_path: str = 'Backups') -> List[D
             return data.get('value', [])
 
 
+async def list_children(access_token: str, parent_id: str | None = None) -> List[Dict]:
+    headers = {'Authorization': f'Bearer {access_token}'}
+    if parent_id:
+        url = f"{GRAPH_BASE}/me/drive/items/{parent_id}/children"
+    else:
+        # With Files.ReadWrite.AppFolder scope, approot is the correct root.
+        url = f"{GRAPH_BASE}/me/drive/special/approot/children"
+
+    async with aiohttp.ClientSession() as session:
+        async with session.get(url, headers=headers) as resp:
+            if resp.status >= 400:
+                text = await resp.text()
+                raise Exception(f'Graph children error: {resp.status} {text}')
+            data = await resp.json()
+            return data.get('value', [])
+
+
 async def download_item(access_token: str, item_id: str, dest_path: str, overwrite: bool = True, progress_cb=None) -> Dict:
     headers = {'Authorization': f'Bearer {access_token}'}
     url = f"{GRAPH_BASE}/me/drive/items/{item_id}/content"

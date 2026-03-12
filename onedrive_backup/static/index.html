@@ -6,114 +6,461 @@
     <title>Onedrive Backup Machine</title>
     <style>
       :root {
-        --bg: #f4f6f8;
+        --bg: #eef1eb;
+        --bg-2: #dfe7db;
         --card: #ffffff;
-        --text: #16202a;
-        --muted: #4b5b6b;
-        --line: #d7dde4;
-        --accent: #ffdd00;
-        --accent-border: #d1b400;
+        --text: #132515;
+        --muted: #526353;
+        --line: #c8d4c2;
+        --brand: #3f7a36;
+        --brand-2: #2f5d2b;
+        --warn: #b37000;
+        --danger: #a12a1a;
+      }
+
+      * {
+        box-sizing: border-box;
       }
 
       body {
         margin: 0;
-        font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
-        background: radial-gradient(circle at top right, #ffffff 0%, var(--bg) 50%, #ecf1f5 100%);
+        font-family: "Trebuchet MS", "Lucida Sans Unicode", sans-serif;
         color: var(--text);
+        background:
+          radial-gradient(circle at 100% 0%, rgba(86, 145, 72, 0.18), transparent 34%),
+          radial-gradient(circle at 0% 100%, rgba(44, 78, 37, 0.12), transparent 28%),
+          linear-gradient(140deg, var(--bg), var(--bg-2));
       }
 
       .wrap {
-        max-width: 760px;
+        max-width: 1100px;
         margin: 0 auto;
         padding: 18px;
+        display: grid;
+        gap: 14px;
       }
 
       .card {
         background: var(--card);
         border: 1px solid var(--line);
-        border-radius: 12px;
+        border-radius: 14px;
         padding: 14px;
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.07);
+        box-shadow: 0 8px 24px rgba(22, 38, 18, 0.08);
       }
 
-      .support {
-        margin-bottom: 14px;
+      .head {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 8px;
       }
 
-      .support h2 {
-        margin: 0 0 6px;
-        font-size: 16px;
+      h1, h2, h3 {
+        margin: 0;
       }
 
-      .support p {
-        margin: 0 0 12px;
+      p {
+        margin: 6px 0 0;
         color: var(--muted);
       }
 
-      .cta {
+      .status-pill {
         display: inline-block;
-        background: var(--accent);
-        color: #111;
-        font-weight: 700;
-        text-decoration: none;
-        padding: 10px 14px;
+        padding: 6px 10px;
+        border-radius: 999px;
+        font-size: 13px;
+        background: #e4ebdf;
+      }
+
+      .row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-top: 10px;
+      }
+
+      button,
+      .cta {
+        border: 1px solid var(--line);
+        background: #f9fbf8;
+        color: var(--text);
         border-radius: 10px;
-        border: 1px solid var(--accent-border);
-        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
-        transition: transform 0.15s ease, box-shadow 0.15s ease;
+        padding: 8px 12px;
+        font-weight: 700;
+        cursor: pointer;
       }
 
-      .cta:hover {
-        transform: translateY(-1px);
-        box-shadow: 0 5px 12px rgba(0, 0, 0, 0.2);
+      button.primary,
+      .cta {
+        background: linear-gradient(135deg, var(--brand), var(--brand-2));
+        color: #fff;
+        border: none;
       }
 
-      h1 {
-        margin-top: 0;
+      button.danger {
+        border-color: #d8b2ac;
+        color: var(--danger);
+        background: #fff8f7;
       }
 
-      .actions {
-        margin-top: 12px;
-      }
-
-      button {
-        margin-right: 8px;
-        margin-bottom: 8px;
+      .cta {
+        text-decoration: none;
       }
 
       #authbox {
         display: none;
-        margin-top: 12px;
+        margin-top: 10px;
         padding: 10px;
-        border: 1px solid #ccc;
+        border: 1px dashed var(--line);
+        border-radius: 10px;
+        background: #fbfdf9;
+      }
+
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 10px;
+      }
+
+      th,
+      td {
+        text-align: left;
+        border-bottom: 1px solid var(--line);
+        padding: 10px 8px;
+        font-size: 14px;
+      }
+
+      tr.selected {
+        background: #f0f7ed;
+      }
+
+      .muted {
+        color: var(--muted);
+      }
+
+      .wizard-backdrop {
+        position: fixed;
+        inset: 0;
+        background: rgba(10, 18, 8, 0.52);
+        display: none;
+        align-items: center;
+        justify-content: center;
+        padding: 14px;
+        z-index: 50;
+      }
+
+      .wizard {
+        width: min(980px, 100%);
+        max-height: 92vh;
+        overflow: auto;
+        background: #fff;
+        border-radius: 14px;
+        border: 1px solid var(--line);
+        box-shadow: 0 14px 44px rgba(14, 26, 12, 0.24);
+      }
+
+      .wizard-head {
+        padding: 12px 14px;
+        border-bottom: 1px solid var(--line);
+        position: sticky;
+        top: 0;
+        background: #fff;
+        z-index: 2;
+      }
+
+      .step-badges {
+        margin-top: 8px;
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+      }
+
+      .step-badge {
+        border-radius: 999px;
+        border: 1px solid var(--line);
+        background: #f7faf5;
+        padding: 6px 10px;
+        font-size: 12px;
+      }
+
+      .step-badge.active {
+        border-color: var(--brand);
+        background: #e8f4e4;
+      }
+
+      .wizard-body {
+        padding: 14px;
+      }
+
+      .step {
+        display: none;
+      }
+
+      .step.active {
+        display: block;
+        animation: fade-in 0.22s ease;
+      }
+
+      @keyframes fade-in {
+        from { opacity: 0; transform: translateY(6px); }
+        to { opacity: 1; transform: translateY(0); }
+      }
+
+      .grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+        gap: 10px;
+      }
+
+      label {
+        display: block;
+        font-size: 13px;
+        margin-bottom: 6px;
+        color: var(--muted);
+      }
+
+      input,
+      select {
+        width: 100%;
+        border: 1px solid var(--line);
         border-radius: 8px;
-        background: #fafcff;
+        padding: 8px;
+      }
+
+      .tree {
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        padding: 10px;
+        min-height: 220px;
+        max-height: 360px;
+        overflow: auto;
+        background: #fbfdf9;
+      }
+
+      .tree-row {
+        display: grid;
+        grid-template-columns: auto 1fr auto;
+        gap: 8px;
+        align-items: center;
+        padding: 6px 4px;
+        border-bottom: 1px dashed #dce5d7;
+      }
+
+      .tree-row:last-child {
+        border-bottom: none;
+      }
+
+      .wizard-actions {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 12px 14px;
+        border-top: 1px solid var(--line);
+        position: sticky;
+        bottom: 0;
+        background: #fff;
+      }
+
+      .small {
+        font-size: 12px;
+      }
+
+      .warn {
+        color: var(--warn);
+      }
+
+      @media (max-width: 700px) {
+        th:nth-child(4),
+        td:nth-child(4),
+        th:nth-child(5),
+        td:nth-child(5) {
+          display: none;
+        }
       }
     </style>
   </head>
   <body>
     <div class="wrap">
-      <div class="card support">
-        <h2>Support the project</h2>
-        <p>If this add-on helps you, consider supporting future improvements.</p>
-        <a class="cta" href="https://buymeacoffee.com/augleao" target="_blank" rel="noopener noreferrer">Buy Me a Coffee</a>
-      </div>
+      <section class="card">
+        <div class="head">
+          <div>
+            <h1>Onedrive Backup Machine</h1>
+            <p>Use your HAOS host as a backup server for OneDrive files.</p>
+          </div>
+          <a class="cta" href="https://buymeacoffee.com/augleao" target="_blank" rel="noopener noreferrer">Support Project</a>
+        </div>
+      </section>
 
-      <div class="card">
-        <h1>Onedrive Backup Machine</h1>
-        <div id="status">Checking...</div>
-        <div class="actions">
-          <button id="login">Vincular conta OneDrive</button>
-          <button id="backup">Trigger Backup</button>
+      <section class="card">
+        <div class="head">
+          <h2>Account Link</h2>
+          <span id="status" class="status-pill">Checking...</span>
+        </div>
+        <div class="row">
+          <button id="login" class="primary">Link OneDrive Account</button>
+          <button id="logout">Disconnect</button>
+        </div>
+        <div id="authbox">
+          <div><strong>Open this URL:</strong> <a id="auth_url" href="#" target="_blank" rel="noopener noreferrer">-</a></div>
+          <div><strong>Enter this code:</strong> <code id="auth_code">-</code></div>
+          <div id="auth_message" style="margin-top: 8px;"></div>
+        </div>
+      </section>
+
+      <section class="card">
+        <div class="head">
+          <h2>Global Retention</h2>
+        </div>
+        <p>Keep deleted files and historical versions for this many days.</p>
+        <div class="row" style="align-items: end;">
+          <div style="max-width: 220px; width: 100%;">
+            <label for="retention_days">Retention days</label>
+            <input id="retention_days" type="number" min="1" max="3650" value="30" />
+          </div>
+          <button id="save_settings" class="primary">Save Global Rule</button>
+        </div>
+      </section>
+
+      <section class="card">
+        <div class="head">
+          <h2>Backup Tasks</h2>
+          <span id="task_hint" class="muted small">Select one task to edit, remove or run now.</span>
+        </div>
+        <div class="row">
+          <button id="new_task" class="primary">Create Task</button>
+          <button id="edit_task">Edit</button>
+          <button id="delete_task" class="danger">Delete</button>
+          <button id="run_task">Run Now</button>
         </div>
 
-        <div id="authbox">
-          <div><strong>Abra esta URL:</strong> <a id="auth_url" href="#" target="_blank" rel="noopener noreferrer">-</a></div>
-          <div><strong>Informe este codigo:</strong> <code id="auth_code">-</code></div>
-          <div id="auth_message" style="margin-top: 8px;"></div>
+        <table>
+          <thead>
+            <tr>
+              <th>Name</th>
+              <th>Type</th>
+              <th>Schedule</th>
+              <th>Next run</th>
+              <th>Last status</th>
+            </tr>
+          </thead>
+          <tbody id="tasks_tbody">
+            <tr><td colspan="5" class="muted">No tasks created yet.</td></tr>
+          </tbody>
+        </table>
+      </section>
+    </div>
+
+    <div id="wizard_backdrop" class="wizard-backdrop">
+      <div class="wizard">
+        <div class="wizard-head">
+          <h3 id="wizard_title">Create Backup Task</h3>
+          <div class="step-badges">
+            <span id="badge_step_1" class="step-badge active">1. OneDrive Source</span>
+            <span id="badge_step_2" class="step-badge">2. Strategy and Schedule</span>
+            <span id="badge_step_3" class="step-badge">3. Destination</span>
+          </div>
+        </div>
+
+        <div class="wizard-body">
+          <section id="step_1" class="step active">
+            <div class="grid">
+              <div>
+                <label for="task_name">Task name</label>
+                <input id="task_name" type="text" placeholder="ex: Documents daily sync" />
+              </div>
+            </div>
+
+            <div class="row" style="margin-top: 12px;">
+              <button id="tree_root">Root</button>
+              <button id="tree_up">Up</button>
+              <button id="tree_refresh">Refresh folder</button>
+            </div>
+            <p class="small">Current folder: <code id="tree_path">/</code></p>
+
+            <div id="tree_container" class="tree"></div>
+            <p class="small">Selected sources: <span id="selected_count">0</span></p>
+          </section>
+
+          <section id="step_2" class="step">
+            <div class="grid">
+              <div>
+                <label for="backup_mode">Backup type</label>
+                <select id="backup_mode">
+                  <option value="full">Full</option>
+                  <option value="incremental">Incremental</option>
+                </select>
+              </div>
+              <div id="incremental_limit_wrap">
+                <label for="incremental_limit">Incrementals until new full</label>
+                <input id="incremental_limit" type="number" min="1" max="365" value="3" />
+              </div>
+            </div>
+
+            <div class="grid" style="margin-top: 10px;">
+              <div>
+                <label for="schedule_type">Periodicity</label>
+                <select id="schedule_type">
+                  <option value="daily">Daily</option>
+                  <option value="weekly">Weekly</option>
+                  <option value="monthly">Monthly</option>
+                </select>
+              </div>
+              <div>
+                <label for="schedule_time">Time (HH:MM)</label>
+                <input id="schedule_time" type="time" value="02:00" />
+              </div>
+              <div id="weekly_wrap" style="display: none;">
+                <label for="schedule_weekday">Weekday</label>
+                <select id="schedule_weekday">
+                  <option value="0">Monday</option>
+                  <option value="1">Tuesday</option>
+                  <option value="2">Wednesday</option>
+                  <option value="3">Thursday</option>
+                  <option value="4">Friday</option>
+                  <option value="5">Saturday</option>
+                  <option value="6">Sunday</option>
+                </select>
+              </div>
+              <div id="monthly_wrap" style="display: none;">
+                <label for="schedule_day">Day of month</label>
+                <input id="schedule_day" type="number" min="1" max="28" value="1" />
+              </div>
+            </div>
+            <p class="small warn">Incremental mode does not mirror deletions from OneDrive to destination.</p>
+          </section>
+
+          <section id="step_3" class="step">
+            <div class="grid">
+              <div>
+                <label for="destination_path">Destination path in HAOS</label>
+                <input id="destination_path" type="text" value="/backup/onedrive" />
+              </div>
+            </div>
+            <div style="margin-top: 12px;">
+              <label>
+                <input id="task_enabled" type="checkbox" checked />
+                Task enabled
+              </label>
+            </div>
+            <div style="margin-top: 12px;" class="small muted">
+              Review: this task will save selected OneDrive sources to your local HAOS destination.
+            </div>
+          </section>
+        </div>
+
+        <div class="wizard-actions">
+          <div class="row" style="margin: 0;">
+            <button id="wizard_cancel">Cancel</button>
+          </div>
+          <div class="row" style="margin: 0;">
+            <button id="wizard_prev">Back</button>
+            <button id="wizard_next" class="primary">Next</button>
+            <button id="wizard_save" class="primary" style="display: none;">Save Task</button>
+          </div>
         </div>
       </div>
     </div>
+
     <script src="static/app.js"></script>
   </body>
 </html>
