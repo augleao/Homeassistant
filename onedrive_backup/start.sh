@@ -22,10 +22,24 @@ o=json.load(open('/data/options.json'))
 print(o.get('backup_path','/backup') or '/backup')
 PY
 )
+  LOG_LEVEL=$(python - <<'PY'
+import json,sys
+o=json.load(open('/data/options.json'))
+print(o.get('log_level','INFO') or 'INFO')
+PY
+)
+  LOG_FILE_PATH=$(python - <<'PY'
+import json,sys
+o=json.load(open('/data/options.json'))
+print(o.get('log_file_path','/data/onedrive_backup.log') or '/data/onedrive_backup.log')
+PY
+)
   # export to environment for the python app
   export CLIENT_ID
   export TENANT_ID
   export BACKUP_PATH
+  export LOG_LEVEL
+  export LOG_FILE_PATH
 fi
 
 python main.py

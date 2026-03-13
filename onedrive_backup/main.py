@@ -4,7 +4,10 @@ import uuid
 import asyncio
 import pathlib
 import logging
+import shutil
+import re
 import threading
+from logging.handlers import RotatingFileHandler
 from datetime import datetime, timedelta, timezone
 from zoneinfo import ZoneInfo
 from aiohttp import web
@@ -19,11 +22,51 @@ _LOGGER = logging.getLogger(__name__)
 
 
 LOG_LEVEL = (os.environ.get('LOG_LEVEL') or 'INFO').strip().upper()
-if not logging.getLogger().handlers:
-    logging.basicConfig(
-        level=getattr(logging, LOG_LEVEL, logging.INFO),
-        format='%(asctime)s %(levelname)s [%(name)s] %(message)s',
-    )
+LOG_FILE_PATH = (os.environ.get('LOG_FILE_PATH') or '/data/onedrive_backup.log').strip()
+LOG_MAX_BYTES = int(os.environ.get('LOG_MAX_BYTES', '1048576'))
+LOG_BACKUP_COUNT = int(os.environ.get('LOG_BACKUP_COUNT', '5'))
+LOG_TAIL_LINES_DEFAULT = int(os.environ.get('LOG_TAIL_LINES_DEFAULT', '200'))
+
+
+def setup_logging():
+    root_logger = logging.getLogger()
+    log_level = getattr(logging, LOG_LEVEL, logging.INFO)
+    root_logger.setLevel(log_level)
+
+    formatter = logging.Formatter('%(asctime)s %(levelname)s [%(name)s] %(message)s')
+
+    if not root_logger.handlers:
+        stream_handler = logging.StreamHandler()
+        stream_handler.setFormatter(formatter)
+        root_logger.addHandler(stream_handler)
+
+    if not LOG_FILE_PATH:
+        return
+
+    has_same_file_handler = False
+    for handler in root_logger.handlers:
+        if isinstance(handler, RotatingFileHandler) and getattr(handler, 'baseFilename', None) == os.path.abspath(LOG_FILE_PATH):
+            has_same_file_handler = True
+            break
+
+    if has_same_file_handler:
+        return
+
+    try:
+        os.makedirs(os.path.dirname(LOG_FILE_PATH) or '.', exist_ok=True)
+        file_handler = RotatingFileHandler(
+            LOG_FILE_PATH,
+            maxBytes=LOG_MAX_BYTES,
+            backupCount=LOG_BACKUP_COUNT,
+            encoding='utf-8',
+        )
+        file_handler.setFormatter(formatter)
+        root_logger.addHandler(file_handler)
+    except Exception:
+        _LOGGER.exception('Failed to initialize file logging at path=%s', LOG_FILE_PATH)
+
+
+setup_logging()
 
 PORT = int(os.environ.get("PORT", 8080))
 CLIENT_ID = (os.environ.get("CLIENT_ID") or os.getenv("ADDON_CLIENT_ID") or "").strip()
@@ -90,6 +133,29 @@ def now_local():
     return datetime.now(APP_TZ)
 
 
+def read_log_tail(max_lines=LOG_TAIL_LINES_DEFAULT):
+    if not LOG_FILE_PATH:
+        return {'available': False, 'reason': 'log_file_path_not_configured', 'path': None, 'lines': []}
+
+    if not os.path.exists(LOG_FILE_PATH):
+        return {'available': False, 'reason': 'log_file_not_found', 'path': LOG_FILE_PATH, 'lines': []}
+
+    if max_lines < 1:
+        max_lines = 1
+    if max_lines > 2000:
+        max_lines = 2000
+
+    with open(LOG_FILE_PATH, 'r', encoding='utf-8', errors='replace') as f:
+        lines = f.readlines()
+
+    return {
+        'available': True,
+        'reason': None,
+        'path': LOG_FILE_PATH,
+        'lines': [line.rstrip('\n') for line in lines[-max_lines:]],
+    }
+
+
 def _format_dt(dt):
     if not dt:
         return None
@@ -127,6 +193,14 @@ def _scheduler_event_listener(event):
 
 def now_utc_iso():
     return datetime.now(timezone.utc).isoformat()
+
+
+def to_safe_folder_name(value):
+    text = (value or '').strip()
+    if not text:
+        return 'task'
+    safe = re.sub(r'[^A-Za-z0-9._-]+', '_', text).strip('._-')
+    return safe or 'task'
 
 
 def parse_hhmm(value):
@@ -731,40 +805,54 @@ async def delete_task(request):
     return web.json_response({'deleted': True})
 
 
-async def sync_file_item(access_token, item, destination_root, rel_path, mode, summary):
+async def sync_file_item(access_token, item, destination_root, rel_path, mode, summary, reference_root=None, archive_root=None):
+    source_name = item.get('name') or item.get('id') or 'unknown'
     dest_path = os.path.join(destination_root, rel_path)
     os.makedirs(os.path.dirname(dest_path) or '.', exist_ok=True)
+    compare_path = os.path.join(reference_root or destination_root, rel_path)
 
-    if mode == 'incremental' and os.path.exists(dest_path):
+    if mode == 'incremental' and os.path.exists(compare_path):
         remote_dt = parse_graph_datetime(item.get('lastModifiedDateTime'))
-        local_dt = datetime.fromtimestamp(os.path.getmtime(dest_path), tz=timezone.utc)
+        local_dt = datetime.fromtimestamp(os.path.getmtime(compare_path), tz=timezone.utc)
         if remote_dt and remote_dt <= local_dt:
             summary['skipped'] += 1
+            _LOGGER.info('Incremental skip file=%s rel_path=%s remote_modified=%s local_modified=%s', source_name, rel_path, remote_dt.isoformat(), local_dt.isoformat())
             return
 
     await one_drive.download_item(access_token, item.get('id'), dest_path, overwrite=True)
+    if archive_root:
+        archive_path = os.path.join(archive_root, rel_path)
+        os.makedirs(os.path.dirname(archive_path) or '.', exist_ok=True)
+        shutil.copy2(dest_path, archive_path)
     summary['downloaded'] += 1
+    _LOGGER.info('Downloaded file=%s rel_path=%s destination=%s', source_name, rel_path, dest_path)
 
 
-async def sync_folder(access_token, folder_id, rel_root, destination_root, mode, summary):
+async def sync_folder(access_token, folder_id, rel_root, destination_root, mode, summary, reference_root=None, archive_root=None):
     children = await one_drive.list_children(access_token, parent_id=folder_id)
+    _LOGGER.info('Syncing folder rel_root=%s children=%s mode=%s', rel_root, len(children), mode)
     for child in children:
         child_name = child.get('name') or child.get('id')
         child_rel = f"{rel_root}/{child_name}" if rel_root else child_name
         if 'folder' in child:
             os.makedirs(os.path.join(destination_root, child_rel), exist_ok=True)
-            await sync_folder(access_token, child.get('id'), child_rel, destination_root, mode, summary)
+            if archive_root:
+                os.makedirs(os.path.join(archive_root, child_rel), exist_ok=True)
+            await sync_folder(access_token, child.get('id'), child_rel, destination_root, mode, summary, reference_root=reference_root, archive_root=archive_root)
         elif 'file' in child:
-            await sync_file_item(access_token, child, destination_root, child_rel, mode, summary)
+            await sync_file_item(access_token, child, destination_root, child_rel, mode, summary, reference_root=reference_root, archive_root=archive_root)
 
 
-async def sync_source(access_token, source, destination_root, mode, summary):
+async def sync_source(access_token, source, destination_root, mode, summary, reference_root=None, archive_root=None):
     rel_path = (source.get('path') or source.get('name') or source.get('id') or 'item').strip('/').strip()
+    _LOGGER.info('Syncing source id=%s name=%s rel_path=%s is_folder=%s mode=%s', source.get('id'), source.get('name'), rel_path, bool(source.get('is_folder')), mode)
     if source.get('is_folder'):
         os.makedirs(os.path.join(destination_root, rel_path), exist_ok=True)
-        await sync_folder(access_token, source.get('id'), rel_path, destination_root, mode, summary)
+        if archive_root:
+            os.makedirs(os.path.join(archive_root, rel_path), exist_ok=True)
+        await sync_folder(access_token, source.get('id'), rel_path, destination_root, mode, summary, reference_root=reference_root, archive_root=archive_root)
     else:
-        await sync_file_item(access_token, source, destination_root, rel_path, mode, summary)
+        await sync_file_item(access_token, source, destination_root, rel_path, mode, summary, reference_root=reference_root, archive_root=archive_root)
 
 
 async def run_task_by_id(app, task_id, trigger='manual', existing_job_id=None):
@@ -795,7 +883,7 @@ async def run_task_by_id(app, task_id, trigger='manual', existing_job_id=None):
     else:
         jobs[job_id]['status'] = 'running'
 
-    _LOGGER.info('Starting backup job id=%s task_id=%s trigger=%s', job_id, task_id, trigger)
+    _LOGGER.info('Starting backup job id=%s task_id=%s task_name=%s trigger=%s', job_id, task_id, task.get('name'), trigger)
 
     try:
         token = acquire_token_silent(app)
@@ -817,20 +905,36 @@ async def run_task_by_id(app, task_id, trigger='manual', existing_job_id=None):
         jobs[job_id]['mode'] = effective_mode
 
         destination_root = task.get('destination_path') or BACKUP_PATH
-        os.makedirs(destination_root, exist_ok=True)
+        task_folder = to_safe_folder_name(task.get('name') or task_id)
+        task_root = os.path.join(destination_root, task_folder)
+        mirror_root = os.path.join(task_root, '_latest')
+        run_stamp = now_local().strftime('%Y%m%d_%H%M%S')
+        run_root = os.path.join(task_root, f'{effective_mode}_{run_stamp}')
+        os.makedirs(mirror_root, exist_ok=True)
+        os.makedirs(run_root, exist_ok=True)
+
+        jobs[job_id]['destination_root'] = destination_root
+        jobs[job_id]['task_root'] = task_root
+        jobs[job_id]['run_path'] = run_root
+
         summary = jobs[job_id]['summary']
+        _LOGGER.info('Backup job context id=%s task_id=%s mode_configured=%s mode_effective=%s destination=%s run_path=%s sources=%s', job_id, task_id, configured_mode, effective_mode, destination_root, run_root, len(task.get('sources') or []))
 
         for source in task.get('sources') or []:
             try:
-                await sync_source(access_token, source, destination_root, effective_mode, summary)
+                await sync_source(access_token, source, mirror_root, effective_mode, summary, reference_root=mirror_root, archive_root=run_root)
             except Exception as source_ex:
                 summary['errors'] += 1
-                summary['error_messages'].append(str(source_ex))
+                source_desc = source.get('path') or source.get('name') or source.get('id') or 'unknown'
+                error_message = f'source={source_desc} error={source_ex}'
+                summary['error_messages'].append(error_message)
+                _LOGGER.exception('Source sync failed job_id=%s task_id=%s source=%s', job_id, task_id, source_desc)
 
         if summary['errors'] > 0:
             jobs[job_id]['status'] = 'completed_with_errors'
             task_state = task.setdefault('state', {})
             task_state['last_status'] = 'completed_with_errors'
+            _LOGGER.warning('Backup job completed with errors id=%s task_id=%s errors=%s', job_id, task_id, summary['errors'])
         else:
             jobs[job_id]['status'] = 'completed'
             task_state = task.setdefault('state', {})
@@ -870,7 +974,7 @@ async def run_task_by_id(app, task_id, trigger='manual', existing_job_id=None):
             task_state['next_run_at'] = None
         task['updated_at'] = now_utc_iso()
         save_state(app)
-        _LOGGER.exception('Backup job failed id=%s task_id=%s', job_id, task_id)
+        _LOGGER.exception('Backup job failed id=%s task_id=%s task_name=%s', job_id, task_id, task.get('name'))
 
     finally:
         jobs[job_id]['completed_at'] = now_utc_iso()
@@ -963,6 +1067,19 @@ async def debug_scheduler(request):
     )
 
 
+async def get_logs(request):
+    lines_raw = (request.query.get('lines') or '').strip()
+    max_lines = LOG_TAIL_LINES_DEFAULT
+    if lines_raw:
+        try:
+            max_lines = int(lines_raw)
+        except ValueError:
+            return web.json_response({'error': 'lines must be an integer'}, status=400)
+
+    payload = read_log_tail(max_lines=max_lines)
+    return web.json_response(payload)
+
+
 async def trigger_backup(request):
     state = get_state(request.app)
     tasks = state.get('tasks') or []
@@ -1047,6 +1164,7 @@ def create_app():
     app.router.add_get('/api/jobs/{job_id}', get_job)
     app.router.add_get('/api/onedrive/tree', onedrive_tree)
     app.router.add_get('/api/debug/scheduler', debug_scheduler)
+    app.router.add_get('/api/logs', get_logs)
 
     app.router.add_post('/api/backup', trigger_backup)
     app.router.add_get('/api/list', list_backups)

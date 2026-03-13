@@ -1,6 +1,6 @@
 {
   "name": "Onedrive Backup Machine",
-  "version": "0.3.19",
+  "version": "0.3.20",
   "slug": "onedrive_backup_machine",
   "description": "Backup OneDrive files to Home Assistant OS with scheduled and on-demand backups.",
   "url": "https://buymeacoffee.com/augleao",
@@ -17,11 +17,15 @@
   "options": {
     "client_id": "",
     "tenant_id": "",
-    "backup_path": "/backup"
+    "backup_path": "/backup",
+    "log_level": "INFO",
+    "log_file_path": "/data/onedrive_backup.log"
   },
   "schema": {
     "client_id": "str",
     "tenant_id": "str?",
-    "backup_path": "str?"
+    "backup_path": "str?",
+    "log_level": "str?",
+    "log_file_path": "str?"
   }
 }
