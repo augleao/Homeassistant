@@ -6,6 +6,15 @@ The format is based on Keep a Changelog, and this project adheres to Semantic Ve
 
 ## [Unreleased]
 
+## [0.2.2] - 2026-03-14
+### Changed
+- Bumped custom component version to `0.2.2`.
+
+## [0.3.23] - 2026-03-14
+### Changed
+- Bumped add-on version to `0.3.23`.
+- Updated frontend asset token to `v=0.3.23`.
+
 ## [0.2.1] - 2026-03-14
 ### Added
 - Dynamic task run buttons in the custom component without Home Assistant restart.
