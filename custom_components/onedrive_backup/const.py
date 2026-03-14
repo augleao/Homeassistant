@@ -9,3 +9,10 @@ DEFAULT_ADDON_URL = "http://127.0.0.1:8080"
 DEFAULT_SCAN_INTERVAL = 30
 
 SERVICE_RUN_TASK = "run_task"
+
+DEVICE_INFO = {
+    "identifiers": {(DOMAIN, "onedrive_backup")},
+    "name": "OneDrive Backup Machine",
+    "manufacturer": "Onedrive Backup Machine Add-ons",
+    "model": "Add-on",
+}

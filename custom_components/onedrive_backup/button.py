@@ -5,7 +5,7 @@ from homeassistant.core import callback
 from homeassistant.components.button import ButtonEntity
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
-from .const import DOMAIN
+from .const import DOMAIN, DEVICE_INFO
 
 
 async def async_setup_platform(hass, config, async_add_entities, discovery_info=None):
@@ -53,6 +53,10 @@ class _BaseButton(CoordinatorEntity, ButtonEntity):
     """Base OneDrive backup button."""
 
     _attr_has_entity_name = True
+
+    @property
+    def device_info(self):
+        return DEVICE_INFO
 
     @property
     def available(self) -> bool:

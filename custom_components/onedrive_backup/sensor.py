@@ -4,7 +4,7 @@ from __future__ import annotations
 from homeassistant.components.sensor import SensorEntity
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
-from .const import DOMAIN
+from .const import DOMAIN, DEVICE_INFO
 
 
 async def async_setup_platform(hass, config, async_add_entities, discovery_info=None):
@@ -26,6 +26,10 @@ class _BaseJobSensor(CoordinatorEntity, SensorEntity):
     """Common behavior for job-based sensors."""
 
     _attr_has_entity_name = True
+
+    @property
+    def device_info(self):
+        return DEVICE_INFO
 
     def _latest_job(self) -> dict:
         jobs = (self.coordinator.data or {}).get("jobs") or []

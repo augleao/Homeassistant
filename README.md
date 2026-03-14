@@ -1,5 +1,7 @@
 
-Onedrive Backup Machine
+# Onedrive Backup Machine
+
+[![Buy Me A Coffee](https://img.shields.io/badge/Buy%20Me%20A%20Coffee-support-yellow?style=flat&logo=buy-me-a-coffee)](https://www.buymeacoffee.com/augleao)
 
 Back up the files that matter in OneDrive to your Home Assistant host with scheduling, visibility, and control.
 
@@ -115,3 +117,7 @@ After restart, add the generated entities to your dashboard using standard cards
 ## Status
 
 The project is actively evolving. The current direction is focused on a stronger backup UX: better job visibility, clearer storage layout, and easier troubleshooting inside the add-on itself.
+
+---
+
+[![Buy Me A Coffee](https://www.buymeacoffee.com/assets/img/custom_images/yellow_img.png)](https://www.buymeacoffee.com/augleao)
