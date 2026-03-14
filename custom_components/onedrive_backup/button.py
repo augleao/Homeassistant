@@ -16,7 +16,8 @@ async def async_setup_platform(hass, config, async_add_entities, discovery_info=
 
     task_buttons = hass.data[DOMAIN].setdefault("task_buttons", {})
 
-    entities = [RunNowButton(coordinator)]
+    entities: list[_BaseButton] = []
+    entities.append(RunNowButton(coordinator))
 
     tasks = (coordinator.data or {}).get("tasks") or []
     for task in tasks:
@@ -75,7 +76,7 @@ class RunNowButton(_BaseButton):
         await self.coordinator.async_request_refresh()
 
 
-class RunTaskButton(_BaseButton):
+class RunTaskButton(RunNowButton):
     """Run a specific task immediately."""
 
     def __init__(self, coordinator, task_id: str) -> None:
