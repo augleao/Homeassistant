@@ -5,6 +5,10 @@
 
 Back up the files that matter in OneDrive to your Home Assistant host with scheduling, visibility, and control.
 
+Current release versions:
+- Add-on: 0.3.24
+- Custom component: 0.2.4
+
 Onedrive Backup Machine is a Home Assistant add-on built for people who do not want their file protection strategy to depend on another opaque cloud workflow. It lets you connect OneDrive, choose exactly what should be protected, schedule recurring jobs, and keep every run stored locally in a way that is easy to inspect and recover.
 
 ## Why Use It
