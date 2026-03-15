@@ -1,6 +1,5 @@
 {
   "name": "OneDrive Backup Machine",
-  "content": ["custom_components"],
   "homeassistant": "2021.6.0",
   "zip_release": false
 }

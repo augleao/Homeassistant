@@ -3,6 +3,7 @@
   "name": "OneDrive Backup",
   "version": "0.2.4",
   "documentation": "https://github.com/augleao/onedrive-backup-machine",
+  "issue_tracker": "https://github.com/augleao/onedrive-backup-machine/issues",
   "requirements": [],
   "dependencies": [],
   "codeowners": ["@augleao"],
