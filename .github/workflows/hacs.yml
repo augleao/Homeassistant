@@ -10,9 +10,10 @@ jobs:
   validate-hacs:
     name: Validate HACS manifest
     runs-on: ubuntu-latest
+    permissions: {}
     steps:
       - uses: actions/checkout@v4
-      - name: Validate HACS manifest
-        uses: hacs/integration-action@v2
+      - name: HACS validation
+        uses: hacs/action@main
         with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
+          category: "integration"
